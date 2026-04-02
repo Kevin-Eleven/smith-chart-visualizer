@@ -1,0 +1,196 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@layer base {
+  :root {
+    --background: 220 20% 97%;
+    --foreground: 220 25% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 25% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 25% 10%;
+
+    --primary: 220 70% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 15% 92%;
+    --secondary-foreground: 220 25% 15%;
+
+    --muted: 220 15% 94%;
+    --muted-foreground: 220 10% 45%;
+
+    --accent: 38 92% 50%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 15% 88%;
+    --input: 220 15% 88%;
+    --ring: 220 70% 50%;
+
+    --radius: 0.5rem;
+
+    /* Smith Chart specific tokens */
+    --chart-bg: 0 0% 100%;
+    --chart-resistance: 220 76% 53%;
+    --chart-reactance: 38 90% 46%;
+    --chart-r1-accent: 225 76% 52%;
+    --chart-vswr: 0 72% 51%;
+    --chart-r-highlight: 142 72% 40%;
+    --chart-x-highlight: 38 90% 46%;
+    --chart-conductance: 174 62% 35%;
+    --chart-susceptance: 263 70% 52%;
+    --chart-q-circle: 330 80% 55%;
+    --chart-wtg: 220 76% 53%;
+    --chart-wtl: 142 72% 40%;
+    --chart-point-active-ring: 220 70% 50%;
+    --chart-grid-opacity: 0.6;
+
+    --panel-bg: 0 0% 100%;
+    --panel-header: 220 25% 15%;
+    --panel-border: 220 15% 88%;
+
+    --tab-active: 220 70% 50%;
+    --tab-inactive: 220 10% 55%;
+    --tab-active-bg: 220 70% 96%;
+
+    --status-bar-bg: 220 25% 12%;
+    --status-bar-fg: 220 15% 85%;
+    --status-bar-accent: 38 92% 55%;
+
+    --tooltip-bg: 220 25% 12%;
+    --tooltip-fg: 220 15% 92%;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 222 25% 8%;
+    --foreground: 220 15% 90%;
+
+    --card: 222 22% 12%;
+    --card-foreground: 220 15% 90%;
+
+    --popover: 222 22% 12%;
+    --popover-foreground: 220 15% 90%;
+
+    --primary: 220 70% 55%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 222 18% 18%;
+    --secondary-foreground: 220 15% 85%;
+
+    --muted: 222 18% 16%;
+    --muted-foreground: 220 10% 55%;
+
+    --accent: 38 92% 55%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 62.8% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 222 18% 20%;
+    --input: 222 18% 20%;
+    --ring: 220 70% 55%;
+
+    --chart-bg: 222 25% 10%;
+    --chart-grid-opacity: 0.5;
+
+    --panel-bg: 222 22% 12%;
+    --panel-header: 220 15% 88%;
+    --panel-border: 222 18% 22%;
+
+    --tab-active: 220 70% 60%;
+    --tab-inactive: 220 10% 50%;
+    --tab-active-bg: 220 50% 18%;
+
+    --status-bar-bg: 222 30% 6%;
+    --status-bar-fg: 220 15% 80%;
+
+    --tooltip-bg: 222 22% 16%;
+    --tooltip-fg: 220 15% 88%;
+
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+}
+
+@layer components {
+  .smith-panel {
+    @apply bg-card border-border;
+  }
+
+  .smith-tab {
+    @apply text-muted-foreground transition-colors duration-150 cursor-pointer select-none;
+  }
+
+  .smith-tab-active {
+    color: hsl(var(--tab-active));
+    background: hsl(var(--tab-active-bg));
+  }
+
+  .smith-status-bar {
+    background: hsl(var(--status-bar-bg));
+    color: hsl(var(--status-bar-fg));
+  }
+
+  .smith-status-accent {
+    color: hsl(var(--status-bar-accent));
+  }
+
+  .smith-tooltip {
+    background: hsl(var(--tooltip-bg));
+    color: hsl(var(--tooltip-fg));
+  }
+
+  .smith-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .smith-input {
+    @apply bg-background border border-input rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .smith-btn {
+    @apply bg-primary text-primary-foreground px-4 py-1.5 rounded-md text-sm font-medium transition-colors hover:opacity-90 cursor-pointer;
+  }
+
+  .smith-btn-secondary {
+    @apply bg-secondary text-secondary-foreground px-4 py-1.5 rounded-md text-sm font-medium transition-colors hover:opacity-80 cursor-pointer;
+  }
+
+  .smith-btn-ghost {
+    @apply text-muted-foreground px-3 py-1.5 rounded-md text-sm transition-colors hover:bg-secondary cursor-pointer;
+  }
+}
