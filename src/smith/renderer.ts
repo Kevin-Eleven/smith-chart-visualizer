@@ -4,8 +4,8 @@ import {
   reactanceArc,
   gammaToCanvas,
   qCircle,
-} from './math';
-import type { SmithState, SmithPoint } from './state';
+} from "./math";
+import type { SmithState, SmithPoint } from "./state";
 
 // === CHART RENDERER ===
 
@@ -22,7 +22,11 @@ interface RenderContext {
   isDark: boolean;
 }
 
-function getColor(isDark: boolean, lightColor: string, darkColor: string): string {
+function getColor(
+  isDark: boolean,
+  lightColor: string,
+  darkColor: string,
+): string {
   return isDark ? darkColor : lightColor;
 }
 
@@ -31,9 +35,13 @@ export function renderSmithChart(
   state: SmithState,
   isDark: boolean,
   hoverGamma: Complex | null = null,
-  zoomTransform: { scale: number; offsetX: number; offsetY: number } = { scale: 1, offsetX: 0, offsetY: 0 }
+  zoomTransform: { scale: number; offsetX: number; offsetY: number } = {
+    scale: 1,
+    offsetX: 0,
+    offsetY: 0,
+  },
 ) {
-  const ctx = canvas.getContext('2d')!;
+  const ctx = canvas.getContext("2d")!;
   const dpr = window.devicePixelRatio || 1;
   const w = canvas.clientWidth;
   const h = canvas.clientHeight;
@@ -43,7 +51,7 @@ export function renderSmithChart(
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
   // Clear
-  ctx.fillStyle = isDark ? '#0f1318' : '#ffffff';
+  ctx.fillStyle = isDark ? "#0f1318" : "#ffffff";
   ctx.fillRect(0, 0, w, h);
 
   const margin = state.display.showOuterScales ? 55 : 15;
@@ -63,11 +71,11 @@ export function renderSmithChart(
   }
 
   // Draw chart grid
-  if (state.chartMode === 'Z' || state.chartMode === 'ZY') {
-    drawImpedanceGrid(rc, state.chartMode === 'ZY' ? 0.5 : 1.0);
+  if (state.chartMode === "Z" || state.chartMode === "ZY") {
+    drawImpedanceGrid(rc, state.chartMode === "ZY" ? 0.5 : 1.0);
   }
-  if (state.chartMode === 'Y' || state.chartMode === 'ZY') {
-    drawAdmittanceGrid(rc, state.chartMode === 'ZY' ? 0.5 : 1.0);
+  if (state.chartMode === "Y" || state.chartMode === "ZY") {
+    drawAdmittanceGrid(rc, state.chartMode === "ZY" ? 0.5 : 1.0);
   }
 
   // Q circles
@@ -76,7 +84,7 @@ export function renderSmithChart(
   }
 
   // Active point highlights
-  const activePoint = state.points.find(p => p.id === state.activePointId);
+  const activePoint = state.points.find((p) => p.id === state.activePointId);
   if (activePoint) {
     drawPointHighlights(rc, activePoint);
   }
@@ -94,7 +102,7 @@ export function renderSmithChart(
     const hp = gammaToCanvas(hoverGamma, cx, cy, R);
     ctx.beginPath();
     ctx.arc(hp.x, hp.y, 4, 0, Math.PI * 2);
-    ctx.strokeStyle = isDark ? '#ffffff80' : '#00000060';
+    ctx.strokeStyle = isDark ? "#ffffff80" : "#00000060";
     ctx.lineWidth = 1;
     ctx.stroke();
 
@@ -104,7 +112,7 @@ export function renderSmithChart(
     ctx.lineTo(hp.x + 8, hp.y);
     ctx.moveTo(hp.x, hp.y - 8);
     ctx.lineTo(hp.x, hp.y + 8);
-    ctx.strokeStyle = isDark ? '#ffffff40' : '#00000030';
+    ctx.strokeStyle = isDark ? "#ffffff40" : "#00000030";
     ctx.lineWidth = 0.5;
     ctx.stroke();
   }
@@ -145,7 +153,13 @@ function drawImpedanceGrid(rc: RenderContext, alpha: number) {
       const circ = resistanceCircle(r);
       const isR1 = r === 1;
       ctx.beginPath();
-      ctx.arc(cx + circ.cx * R, cy - circ.cy * R, circ.radius * R, 0, Math.PI * 2);
+      ctx.arc(
+        cx + circ.cx * R,
+        cy - circ.cy * R,
+        circ.radius * R,
+        0,
+        Math.PI * 2,
+      );
 
       if (isR1) {
         ctx.strokeStyle = isDark
@@ -165,12 +179,10 @@ function drawImpedanceGrid(rc: RenderContext, alpha: number) {
         const labelX = cx + (circ.cx - circ.radius) * R;
         // Only label if inside chart
         if (labelX >= cx - R - 5) {
-          ctx.fillStyle = isDark
-            ? `rgba(96,165,250,${alpha * 0.8})`
-            : `rgba(29,78,216,${alpha * 0.8})`;
-          ctx.font = '9px "JetBrains Mono", monospace';
-          ctx.textAlign = 'center';
-          ctx.fillText(r.toString(), cx + circ.cx * R + circ.radius * R + 2, cy - 4);
+          ctx.fillStyle = isDark ? `#5698fb` : `#0026ff`;
+          ctx.font = '10px "JetBrains Mono", monospace';
+          ctx.textAlign = "center";
+          ctx.fillText(r.toString(), labelX - 3, cy + 12);
         }
       }
     }
@@ -182,7 +194,7 @@ function drawImpedanceGrid(rc: RenderContext, alpha: number) {
       for (const sign of [1, -1]) {
         const xv = x * sign;
         const arc = reactanceArc(xv);
-        drawReactanceArcClipped(rc, arc, alpha, false);
+        drawReactanceArcClipped(rc, arc, alpha, false, xv);
       }
     }
   }
@@ -219,6 +231,20 @@ function drawAdmittanceGrid(rc: RenderContext, alpha: number) {
         : `rgba(13,148,136,${alpha * 0.6})`;
       ctx.lineWidth = g === 1 ? 1.5 : 0.5;
       ctx.stroke();
+
+      // Label
+      if (g > 0) {
+        const labelX = cx - circ.cx * R + circ.radius * R;
+        // Only label if inside chart
+        if (labelX <= cx + R + 5) {
+          ctx.fillStyle = isDark
+            ? `rgba(45,212,191,${alpha * 0.8})`
+            : `rgba(0,100,80,${alpha * 0.8})`;
+          ctx.font = '10px "JetBrains Mono", monospace';
+          ctx.textAlign = "center";
+          ctx.fillText(g.toString(), labelX + 3, cy - 12);
+        }
+      }
     }
   }
 
@@ -230,7 +256,7 @@ function drawAdmittanceGrid(rc: RenderContext, alpha: number) {
         const arc = reactanceArc(bv);
         // Mirror: center at (-1, -1/b) for admittance
         const mirroredArc = { cx: -arc.cx, cy: -arc.cy, radius: arc.radius };
-        drawReactanceArcClipped(rc, mirroredArc, alpha, true);
+        drawReactanceArcClipped(rc, mirroredArc, alpha, true, bv);
       }
     }
   }
@@ -240,7 +266,8 @@ function drawReactanceArcClipped(
   rc: RenderContext,
   arc: { cx: number; cy: number; radius: number },
   alpha: number,
-  isAdmittance: boolean
+  isAdmittance: boolean,
+  reactanceValue: number = 0,
 ) {
   const { ctx, cx, cy, R, isDark } = rc;
 
@@ -279,7 +306,7 @@ function drawReactanceArcClipped(
   if (isAdmittance) {
     ctx.strokeStyle = isDark
       ? `rgba(124,58,237,${alpha * 0.6})`
-      : `rgba(124,58,237,${alpha * 0.6})`;
+      : `rgba(15,55,160,${alpha * 0.6})`;
   } else {
     ctx.strokeStyle = isDark
       ? `rgba(251,191,36,${alpha * 0.6})`
@@ -287,6 +314,40 @@ function drawReactanceArcClipped(
   }
   ctx.lineWidth = 0.5;
   ctx.stroke();
+
+  // Draw text label at the end of the arc
+  if (!isAdmittance && reactanceValue !== 0) {
+    // For positive reactance, use endAngle. For negative, use startAngle.
+    const textAngle = reactanceValue > 0 ? endAngle : startAngle;
+    const textX = arcCx + arcR * Math.cos(textAngle);
+    const textY = arcCy + arcR * Math.sin(textAngle);
+
+    ctx.fillStyle = isDark
+      ? `rgba(251,191,36)`
+      : `rgba(180, 83, 9, 1)`;
+    ctx.font = '10px "JetBrains Mono", monospace';
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    const valueText = reactanceValue.toFixed(1);
+    ctx.fillText(valueText, textX + 15, textY);
+  }
+
+  // Draw text label for admittance arcs
+  if (isAdmittance && reactanceValue !== 0) {
+    // For positive susceptance, use endAngle. For negative, use startAngle.
+    const textAngle = reactanceValue > 0 ? endAngle : startAngle;
+    const textX = arcCx + arcR * Math.cos(textAngle);
+    const textY = arcCy + arcR * Math.sin(textAngle);
+
+    ctx.fillStyle = isDark
+      ? `rgb(157, 112, 235)`
+      : `rgb(75, 15, 160)`;
+    ctx.font = '10px "JetBrains Mono", monospace';
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    const valueText = reactanceValue.toFixed(1);
+    ctx.fillText(valueText, textX - 15, textY);
+  }
 }
 
 function drawQCircles(rc: RenderContext) {
@@ -305,7 +366,7 @@ function drawQCircles(rc: RenderContext) {
 function drawQCircleHalf(
   rc: RenderContext,
   qc: { cx: number; cy: number; radius: number },
-  _sign: number
+  _sign: number,
 ) {
   const { ctx, cx, cy, R, isDark } = rc;
   const qcx = cx + qc.cx * R;
@@ -322,7 +383,7 @@ function drawQCircleHalf(
 
   ctx.beginPath();
   ctx.arc(qcx, qcy, qr, angleFromQ - halfAngle, angleFromQ + halfAngle);
-  ctx.strokeStyle = isDark ? '#f472b690' : '#ec489980';
+  ctx.strokeStyle = isDark ? "#f472b690" : "#ec489980";
   ctx.lineWidth = 1;
   ctx.setLineDash([4, 4]);
   ctx.stroke();
@@ -338,7 +399,7 @@ function drawPointHighlights(rc: RenderContext, point: SmithPoint) {
   if (state.display.showVswrCircle) {
     ctx.beginPath();
     ctx.arc(cx, cy, mag * R, 0, Math.PI * 2);
-    ctx.strokeStyle = '#dc2626';
+    ctx.strokeStyle = "#dc2626";
     ctx.lineWidth = 2;
     ctx.setLineDash([6, 4]);
     ctx.stroke();
@@ -353,7 +414,7 @@ function drawPointHighlights(rc: RenderContext, point: SmithPoint) {
       const circ = { cx: r / (r + 1), cy: 0, radius: 1 / (r + 1) };
       ctx.beginPath();
       ctx.arc(cx + circ.cx * R, cy, circ.radius * R, 0, Math.PI * 2);
-      ctx.strokeStyle = '#16a34a';
+      ctx.strokeStyle = "#16a34a";
       ctx.lineWidth = 2;
       ctx.stroke();
     }
@@ -376,8 +437,14 @@ function drawPointHighlights(rc: RenderContext, point: SmithPoint) {
         const angleFromArc = Math.atan2(cy - arcCy, cx - arcCx);
 
         ctx.beginPath();
-        ctx.arc(arcCx, arcCy, arcR, angleFromArc - halfAngle, angleFromArc + halfAngle);
-        ctx.strokeStyle = '#d97706';
+        ctx.arc(
+          arcCx,
+          arcCy,
+          arcR,
+          angleFromArc - halfAngle,
+          angleFromArc + halfAngle,
+        );
+        ctx.strokeStyle = "#d97706";
         ctx.lineWidth = 2;
         ctx.stroke();
       }
@@ -390,15 +457,25 @@ function drawPath(rc: RenderContext) {
   if (state.points.length < 2) return;
 
   ctx.beginPath();
-  const p0 = gammaToCanvas(new Complex(state.points[0].gamma.re, state.points[0].gamma.im), cx, cy, R);
+  const p0 = gammaToCanvas(
+    new Complex(state.points[0].gamma.re, state.points[0].gamma.im),
+    cx,
+    cy,
+    R,
+  );
   ctx.moveTo(p0.x, p0.y);
 
   for (let i = 1; i < state.points.length; i++) {
-    const pi = gammaToCanvas(new Complex(state.points[i].gamma.re, state.points[i].gamma.im), cx, cy, R);
+    const pi = gammaToCanvas(
+      new Complex(state.points[i].gamma.re, state.points[i].gamma.im),
+      cx,
+      cy,
+      R,
+    );
     ctx.lineTo(pi.x, pi.y);
   }
 
-  ctx.strokeStyle = '#6366f180';
+  ctx.strokeStyle = "#6366f180";
   ctx.lineWidth = 1.5;
   ctx.setLineDash([4, 3]);
   ctx.stroke();
@@ -429,9 +506,9 @@ function drawPoints(rc: RenderContext) {
     ctx.fill();
 
     // Label
-    ctx.fillStyle = isDark ? '#e2e8f0' : '#1e293b';
+    ctx.fillStyle = isDark ? "#e2e8f0" : "#1e293b";
     ctx.font = '10px "JetBrains Mono", monospace';
-    ctx.textAlign = 'left';
+    ctx.textAlign = "left";
     ctx.fillText(point.label, pos.x + (isActive ? 14 : 8), pos.y - 4);
   }
 }
@@ -443,25 +520,25 @@ function drawOuterScales(rc: RenderContext) {
   const outerR3 = R + 40;
 
   // WTG ring
-  ctx.strokeStyle = isDark ? '#3b82f680' : '#2563eb80';
+  ctx.strokeStyle = isDark ? "#3b82f680" : "#2563eb80";
   ctx.lineWidth = 0.5;
   ctx.beginPath();
   ctx.arc(cx, cy, outerR1, 0, Math.PI * 2);
   ctx.stroke();
 
   // WTL ring
-  ctx.strokeStyle = isDark ? '#22c55e80' : '#16a34a80';
+  ctx.strokeStyle = isDark ? "#22c55e80" : "#16a34a80";
   ctx.beginPath();
   ctx.arc(cx, cy, outerR2, 0, Math.PI * 2);
   ctx.stroke();
 
   // Angle ring
-  ctx.strokeStyle = isDark ? '#94a3b880' : '#64748b80';
+  ctx.strokeStyle = isDark ? "#94a3b880" : "#64748b80";
   ctx.beginPath();
   ctx.arc(cx, cy, outerR3, 0, Math.PI * 2);
   ctx.stroke();
 
-  ctx.font = '8px "JetBrains Mono", monospace';
+  ctx.font = '10px "JetBrains Mono", monospace';
 
   // WTG ticks (clockwise, 0 at right/top going clockwise)
   // WTG goes 0 to 0.5λ over 360°
@@ -482,22 +559,25 @@ function drawOuterScales(rc: RenderContext) {
     ctx.beginPath();
     ctx.moveTo(x1, y1);
     ctx.lineTo(x2, y2);
-    ctx.strokeStyle = isDark ? '#3b82f660' : '#2563eb60';
+    ctx.strokeStyle = isDark ? "#3b82f660" : "#2563eb60";
     ctx.lineWidth = 0.5;
     ctx.stroke();
 
     if (i % 5 === 0) {
       const lx = cx + (outerR1 + 10) * Math.cos(angle);
-      const ly = cy - (outerR1 + 10) * Math.sin(angle);
-      ctx.fillStyle = isDark ? '#3b82f6a0' : '#2563eba0';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
+      let ly = cy - (outerR1 + 10) * Math.sin(angle);
+      // Offset 0.50 label below 0.00
+      if (Math.abs(wtgVal - 0.0) < 0.001) ly -= 6;
+      if (Math.abs(wtgVal - 0.5) < 0.001) ly += 6;
+      ctx.fillStyle = isDark ? "#5698fb" : "#0026ff";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
       ctx.fillText(wtgVal.toFixed(2), lx, ly);
     }
   }
 
   // Angle ring labels
-  for (let deg = -180; deg <= 180; deg += 30) {
+  for (let deg = -180; deg < 180; deg += 30) {
     const angle = (deg * Math.PI) / 180;
     const x1 = cx + outerR3 * Math.cos(angle);
     const y1 = cy - outerR3 * Math.sin(angle);
@@ -508,15 +588,15 @@ function drawOuterScales(rc: RenderContext) {
     ctx.beginPath();
     ctx.moveTo(x1, y1);
     ctx.lineTo(x2, y2);
-    ctx.strokeStyle = isDark ? '#94a3b860' : '#64748b60';
+    ctx.strokeStyle = isDark ? "#94a3b860" : "#64748b60";
     ctx.lineWidth = 0.5;
     ctx.stroke();
 
     const lx = cx + (outerR3 + 12) * Math.cos(angle);
     const ly = cy - (outerR3 + 12) * Math.sin(angle);
-    ctx.fillStyle = isDark ? '#94a3b8a0' : '#64748ba0';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(`${deg}°`, lx, ly);
+    ctx.fillStyle = isDark ? "#e7eaef" : "#000000";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(deg === -180 ? "±180°" : `${deg}°`, lx, ly);
   }
 }
