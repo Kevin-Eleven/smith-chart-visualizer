@@ -4,8 +4,13 @@ import {
   createDefaultState,
   genId,
   nextPointColor,
+  resetColorIndex,
   getPointInfo,
   StateHistory,
+  saveStateToStorage,
+  loadStateFromStorage,
+  saveThemeToStorage,
+  loadThemeFromStorage,
   type SmithState,
   type ChartMode,
   type DisplaySettings,
@@ -23,18 +28,29 @@ const history = new StateHistory();
 
 const Index = () => {
   const [state, setState] = useState<SmithState>(() => {
-    const s = createDefaultState();
+    const saved = loadStateFromStorage();
+    const s = saved || createDefaultState();
     history.push(s);
     return s;
   });
   const [activeTab, setActiveTab] = useState<Tab>('input');
   const [hoverInfo, setHoverInfo] = useState<ReturnType<typeof getPointInfo> | null>(null);
-  const [isDark, setIsDark] = useState(() => window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const [isDark, setIsDark] = useState(() => {
+    const saved = loadThemeFromStorage();
+    return saved !== null ? saved : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
   const canvasContainerRef = useRef<HTMLDivElement>(null);
 
+  // Save theme to localStorage
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDark);
+    saveThemeToStorage(isDark);
   }, [isDark]);
+
+  // Save state to localStorage whenever it changes
+  useEffect(() => {
+    saveStateToStorage(state);
+  }, [state]);
 
   const pushState = useCallback((newState: SmithState) => {
     history.push(newState);
@@ -124,6 +140,24 @@ const Index = () => {
     if (s) setState(s);
   }, []);
 
+  const handleReset = useCallback(() => {
+    const ok = window.confirm('Reset chart and clear all points, logs, and history?');
+    if (!ok) return;
+
+    const fresh = createDefaultState();
+    resetColorIndex();
+
+    history.clear();
+    history.push(fresh);
+
+    setState(fresh);
+    setActiveTab('input');
+    setHoverInfo(null);
+    
+    // Also clear from localStorage
+    localStorage.removeItem('smithChart_state');
+  }, []);
+
   const handleGoToStep = useCallback((index: number) => {
     const s = history.goToStep(index);
     if (s) setState(s);
@@ -190,6 +224,7 @@ const Index = () => {
         <div className="flex items-center gap-2">
           <button className="smith-btn-ghost text-xs" onClick={handleUndo} disabled={!history.canUndo()} title="Undo (Ctrl+Z)">↶ Undo</button>
           <button className="smith-btn-ghost text-xs" onClick={handleRedo} disabled={!history.canRedo()} title="Redo (Ctrl+Y)">↷ Redo</button>
+          <button className="smith-btn-ghost text-xs" onClick={handleReset} title="Reset chart">Reset</button>
           <button
             className="smith-btn-ghost text-xs"
             onClick={() => setIsDark(d => !d)}
