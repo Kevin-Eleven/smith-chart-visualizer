@@ -113,6 +113,51 @@ export function getPointInfo(gamma: Complex, Z0: number) {
   };
 }
 
+// === LOCALSTORAGE PERSISTENCE ===
+export function saveStateToStorage(state: SmithState): void {
+  try {
+    localStorage.setItem('smithChart_state', JSON.stringify(state));
+  } catch (e) {
+    console.warn('Failed to save state to localStorage:', e);
+  }
+}
+
+export function loadStateFromStorage(): SmithState | null {
+  try {
+    const saved = localStorage.getItem('smithChart_state');
+    if (!saved) return null;
+    const parsed = JSON.parse(saved) as SmithState;
+    // Revive Complex objects
+    parsed.points = parsed.points.map(p => ({
+      ...p,
+      gamma: new Complex(p.gamma.re, p.gamma.im),
+    }));
+    return parsed;
+  } catch (e) {
+    console.warn('Failed to load state from localStorage:', e);
+    return null;
+  }
+}
+
+export function saveThemeToStorage(isDark: boolean): void {
+  try {
+    localStorage.setItem('smithChart_theme', isDark ? 'dark' : 'light');
+  } catch (e) {
+    console.warn('Failed to save theme to localStorage:', e);
+  }
+}
+
+export function loadThemeFromStorage(): boolean | null {
+  try {
+    const saved = localStorage.getItem('smithChart_theme');
+    if (!saved) return null;
+    return saved === 'dark';
+  } catch (e) {
+    console.warn('Failed to load theme from localStorage:', e);
+    return null;
+  }
+}
+
 // History for undo/redo
 export class StateHistory {
   private stack: SmithState[] = [];
@@ -154,6 +199,11 @@ export class StateHistory {
 
   currentIndex(): number {
     return this.pointer;
+  }
+
+  clear(): void {
+    this.stack = [];
+    this.pointer = -1;
   }
 
   private revive(state: SmithState): SmithState {
