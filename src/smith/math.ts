@@ -224,3 +224,101 @@ export function qCircle(Q: number): { cx: number; cy: number; radius: number } {
     radius: Math.sqrt(1 + 1 / (Q * Q)),
   };
 }
+
+// === LUMPED-ELEMENT MATCHING ===
+
+/** Constant conductance circle in Γ-plane (mirrored resistance circle) */
+export function conductanceCircle(g: number): { cx: number; cy: number; radius: number } {
+  return { cx: -g / (g + 1), cy: 0, radius: 1 / (g + 1) };
+}
+
+/** Constant susceptance arc in Γ-plane (mirrored reactance arc) */
+export function susceptanceArc(b: number): { cx: number; cy: number; radius: number } {
+  if (b === 0) return { cx: -1, cy: Infinity, radius: Infinity };
+  return { cx: -1, cy: -1 / b, radius: 1 / Math.abs(b) };
+}
+
+/**
+ * Apply series reactance: adds +j·deltaX to normalized impedance.
+ * Stays on constant-resistance circle.
+ * Series L → deltaX > 0 (clockwise)
+ * Series C → deltaX < 0 (anti-clockwise)
+ */
+export function applySeriesReactance(gamma: Complex, deltaX: number): Complex {
+  const zn = zFromGamma(gamma);
+  const zNew = new Complex(zn.re, zn.im + deltaX);
+  return gammaFromZ(zNew);
+}
+
+/**
+ * Apply shunt susceptance: adds +j·deltaB to normalized admittance.
+ * Stays on constant-conductance circle.
+ * Shunt C → deltaB > 0 (clockwise)
+ * Shunt L → deltaB < 0 (anti-clockwise)
+ */
+export function applyShuntSusceptance(gamma: Complex, deltaB: number): Complex {
+  const zn = zFromGamma(gamma);
+  const yn = yFromZ(zn);
+  const yNew = new Complex(yn.re, yn.im + deltaB);
+  const zNew = zFromY(yNew);
+  return gammaFromZ(zNew);
+}
+
+/**
+ * Generate intermediate gamma points along a constant-resistance circle
+ * from gammaStart to gammaEnd. Used for rendering matching arcs.
+ */
+export function arcPointsOnConstantR(
+  gammaStart: Complex,
+  gammaEnd: Complex,
+  numPoints: number = 64
+): Complex[] {
+  const zStart = zFromGamma(gammaStart);
+  const zEnd = zFromGamma(gammaEnd);
+  const r = zStart.re; // constant resistance
+  const xStart = zStart.im;
+  const xEnd = zEnd.im;
+
+  const points: Complex[] = [];
+  for (let i = 0; i <= numPoints; i++) {
+    const t = i / numPoints;
+    const x = xStart + (xEnd - xStart) * t;
+    const z = new Complex(r, x);
+    const g = gammaFromZ(z);
+    if (g.abs() <= 1.001) {
+      points.push(g);
+    }
+  }
+  return points;
+}
+
+/**
+ * Generate intermediate gamma points along a constant-conductance circle
+ * from gammaStart to gammaEnd. Used for rendering matching arcs.
+ */
+export function arcPointsOnConstantG(
+  gammaStart: Complex,
+  gammaEnd: Complex,
+  numPoints: number = 64
+): Complex[] {
+  const zStart = zFromGamma(gammaStart);
+  const zEnd = zFromGamma(gammaEnd);
+  const yStart = yFromZ(zStart);
+  const yEnd = yFromZ(zEnd);
+  const g = yStart.re; // constant conductance
+  const bStart = yStart.im;
+  const bEnd = yEnd.im;
+
+  const points: Complex[] = [];
+  for (let i = 0; i <= numPoints; i++) {
+    const t = i / numPoints;
+    const b = bStart + (bEnd - bStart) * t;
+    const y = new Complex(g, b);
+    const z = zFromY(y);
+    const gam = gammaFromZ(z);
+    if (gam.abs() <= 1.001) {
+      points.push(gam);
+    }
+  }
+  return points;
+}

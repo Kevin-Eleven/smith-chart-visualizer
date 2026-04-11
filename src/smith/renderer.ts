@@ -5,7 +5,7 @@ import {
   gammaToCanvas,
   qCircle,
 } from "./math";
-import type { SmithState, SmithPoint } from "./state";
+import type { SmithState, SmithPoint, MatchingStep } from "./state";
 
 // === CHART RENDERER ===
 
@@ -81,6 +81,11 @@ export function renderSmithChart(
   // Q circles
   if (state.display.showQCircles) {
     drawQCircles(rc);
+  }
+
+  // Matching arcs
+  if (state.matchingSteps && state.matchingSteps.length > 0) {
+    drawMatchingArcs(rc);
   }
 
   // Active point highlights
@@ -510,6 +515,115 @@ function drawPoints(rc: RenderContext) {
     ctx.font = '10px "JetBrains Mono", monospace';
     ctx.textAlign = "left";
     ctx.fillText(point.label, pos.x + (isActive ? 14 : 8), pos.y - 4);
+  }
+}
+
+function drawMatchingArcs(rc: RenderContext) {
+  const { ctx, cx, cy, R, isDark, state } = rc;
+
+  const ARC_COLORS: Record<string, string> = {
+    series_L: '#16a34a',
+    series_C: '#2563eb',
+    shunt_L:  '#d97706',
+    shunt_C:  '#8b5cf6',
+  };
+
+  const COMPONENT_LABELS: Record<string, string> = {
+    series_L: 'L',
+    series_C: 'C',
+    shunt_L:  'L',
+    shunt_C:  'C',
+  };
+
+  for (const step of state.matchingSteps) {
+    if (step.arcPoints.length < 2) continue;
+
+    const color = ARC_COLORS[step.component] || '#888';
+
+    // Draw the arc path
+    ctx.beginPath();
+    const p0 = gammaToCanvas(
+      new Complex(step.arcPoints[0].re, step.arcPoints[0].im),
+      cx, cy, R
+    );
+    ctx.moveTo(p0.x, p0.y);
+
+    for (let i = 1; i < step.arcPoints.length; i++) {
+      const pi = gammaToCanvas(
+        new Complex(step.arcPoints[i].re, step.arcPoints[i].im),
+        cx, cy, R
+      );
+      ctx.lineTo(pi.x, pi.y);
+    }
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    // Draw arrowhead at the end of the arc
+    const len = step.arcPoints.length;
+    if (len >= 2) {
+      const pEnd = gammaToCanvas(
+        new Complex(step.arcPoints[len - 1].re, step.arcPoints[len - 1].im),
+        cx, cy, R
+      );
+      const pPrev = gammaToCanvas(
+        new Complex(step.arcPoints[len - 2].re, step.arcPoints[len - 2].im),
+        cx, cy, R
+      );
+
+      const angle = Math.atan2(pEnd.y - pPrev.y, pEnd.x - pPrev.x);
+      const arrowLen = 8;
+      const arrowWidth = Math.PI / 6;
+
+      ctx.beginPath();
+      ctx.moveTo(pEnd.x, pEnd.y);
+      ctx.lineTo(
+        pEnd.x - arrowLen * Math.cos(angle - arrowWidth),
+        pEnd.y - arrowLen * Math.sin(angle - arrowWidth)
+      );
+      ctx.moveTo(pEnd.x, pEnd.y);
+      ctx.lineTo(
+        pEnd.x - arrowLen * Math.cos(angle + arrowWidth),
+        pEnd.y - arrowLen * Math.sin(angle + arrowWidth)
+      );
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    // Label at midpoint of arc
+    const midIdx = Math.floor(step.arcPoints.length / 2);
+    const pMid = gammaToCanvas(
+      new Complex(step.arcPoints[midIdx].re, step.arcPoints[midIdx].im),
+      cx, cy, R
+    );
+
+    const isShunt = step.component === 'shunt_L' || step.component === 'shunt_C';
+    const deltaSymbol = isShunt ? 'ΔB' : 'ΔX';
+    const labelText = `${COMPONENT_LABELS[step.component]} ${deltaSymbol}=${step.value >= 0 ? '+' : ''}${step.value.toFixed(2)}`;
+
+    ctx.fillStyle = color;
+    ctx.font = 'bold 9px "JetBrains Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    // Offset label away from center
+    const dx = pMid.x - cx;
+    const dy = pMid.y - cy;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const offsetDist = 14;
+    const lx = pMid.x + (dx / (dist || 1)) * offsetDist;
+    const ly = pMid.y + (dy / (dist || 1)) * offsetDist;
+
+    // Background for readability
+    const metrics = ctx.measureText(labelText);
+    const pad = 2;
+    ctx.fillStyle = isDark ? 'rgba(15,19,24,0.85)' : 'rgba(255,255,255,0.85)';
+    ctx.fillRect(lx - metrics.width / 2 - pad, ly - 6 - pad, metrics.width + pad * 2, 12 + pad * 2);
+
+    ctx.fillStyle = color;
+    ctx.fillText(labelText, lx, ly);
   }
 }
 

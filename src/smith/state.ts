@@ -1,5 +1,20 @@
 import { Complex, gammaFromZ, zFromGamma, yFromZ, vswr, returnLoss, wtg, wtl, rotateGamma } from './math';
 
+// === MATCHING TYPES ===
+
+export type ComponentType = 'series_L' | 'series_C' | 'shunt_L' | 'shunt_C';
+
+export interface MatchingStep {
+  id: string;
+  component: ComponentType;
+  value: number;           // normalized reactance (X) or susceptance (B)
+  startGamma: Complex;     // gamma before this step
+  endGamma: Complex;       // gamma after this step
+  arcPoints: Complex[];    // intermediate points for arc drawing
+  circleParam: number;     // r for series, g for shunt — the constant circle value
+  pointId: string;         // id of the point created by this step
+}
+
 // === STATE MANAGEMENT ===
 
 export interface SmithPoint {
@@ -43,6 +58,7 @@ export interface SmithState {
   frequencyUnit: 'MHz' | 'GHz';
   display: DisplaySettings;
   log: LogEntry[];
+  matchingSteps: MatchingStep[];
 }
 
 const POINT_COLORS = [
@@ -85,6 +101,7 @@ export function createDefaultState(): SmithState {
       qValues: [1, 2, 5],
     },
     log: [],
+    matchingSteps: [],
   };
 }
 
@@ -122,6 +139,20 @@ export function saveStateToStorage(state: SmithState): void {
   }
 }
 
+function reviveComplex(c: { re: number; im: number }): Complex {
+  return new Complex(c.re, c.im);
+}
+
+function reviveMatchingSteps(steps: MatchingStep[] | undefined): MatchingStep[] {
+  if (!steps) return [];
+  return steps.map(s => ({
+    ...s,
+    startGamma: reviveComplex(s.startGamma),
+    endGamma: reviveComplex(s.endGamma),
+    arcPoints: s.arcPoints.map(reviveComplex),
+  }));
+}
+
 export function loadStateFromStorage(): SmithState | null {
   try {
     const saved = localStorage.getItem('smithChart_state');
@@ -130,8 +161,9 @@ export function loadStateFromStorage(): SmithState | null {
     // Revive Complex objects
     parsed.points = parsed.points.map(p => ({
       ...p,
-      gamma: new Complex(p.gamma.re, p.gamma.im),
+      gamma: reviveComplex(p.gamma),
     }));
+    parsed.matchingSteps = reviveMatchingSteps(parsed.matchingSteps);
     return parsed;
   } catch (e) {
     console.warn('Failed to load state from localStorage:', e);
@@ -213,6 +245,7 @@ export class StateHistory {
       ...p,
       gamma: new Complex(p.gamma.re, p.gamma.im),
     }));
+    s.matchingSteps = reviveMatchingSteps(s.matchingSteps);
     return s;
   }
 }

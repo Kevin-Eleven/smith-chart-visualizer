@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { Complex } from '@/smith/math';
+import { Complex, zFromGamma, yFromZ, applySeriesReactance, applyShuntSusceptance, arcPointsOnConstantR, arcPointsOnConstantG } from '@/smith/math';
 import {
   createDefaultState,
   genId,
@@ -14,15 +14,18 @@ import {
   type SmithState,
   type ChartMode,
   type DisplaySettings,
+  type ComponentType,
+  type MatchingStep,
 } from '@/smith/state';
 import SmithCanvas from '@/components/SmithCanvas';
 import InputPanel from '@/components/InputPanel';
 import PointsPanel from '@/components/PointsPanel';
 import SolutionLogPanel from '@/components/SolutionLogPanel';
 import SettingsPanel from '@/components/SettingsPanel';
+import MatchingPanel from '@/components/MatchingPanel';
 import StatusBar from '@/components/StatusBar';
 
-type Tab = 'input' | 'points' | 'log' | 'settings';
+type Tab = 'input' | 'points' | 'log' | 'settings' | 'matching';
 
 const history = new StateHistory();
 
@@ -167,6 +170,102 @@ const Index = () => {
     pushState({ ...state, log: [] });
   }, [state, pushState]);
 
+  const handleApplyMatchingStep = useCallback((component: ComponentType, magnitude: number) => {
+    const activePoint = state.points.find(p => p.id === state.activePointId);
+    if (!activePoint) return;
+
+    const gamma = new Complex(activePoint.gamma.re, activePoint.gamma.im);
+    const isSeries = component === 'series_L' || component === 'series_C';
+
+    // Compute signed delta
+    let signedValue: number;
+    switch (component) {
+      case 'series_L': signedValue = magnitude; break;
+      case 'series_C': signedValue = -magnitude; break;
+      case 'shunt_L':  signedValue = -magnitude; break;
+      case 'shunt_C':  signedValue = magnitude; break;
+    }
+
+    // Apply the transformation
+    const newGamma = isSeries
+      ? applySeriesReactance(gamma, signedValue)
+      : applyShuntSusceptance(gamma, signedValue);
+
+    // Compute arc points for rendering
+    const arcPoints = isSeries
+      ? arcPointsOnConstantR(gamma, newGamma)
+      : arcPointsOnConstantG(gamma, newGamma);
+
+    // Determine circle parameter
+    const zn = zFromGamma(gamma);
+    const yn = yFromZ(zn);
+    const circleParam = isSeries ? zn.re : yn.re;
+
+    // Create new point
+    const label = `P${state.points.length + 1}`;
+    const color = nextPointColor();
+    const newPoint = { id: genId(), label, gamma: newGamma, color };
+
+    // Create matching step
+    const step: MatchingStep = {
+      id: genId(),
+      component,
+      value: signedValue,
+      startGamma: gamma,
+      endGamma: newGamma,
+      arcPoints,
+      circleParam,
+      pointId: newPoint.id,
+    };
+
+    const componentLabels: Record<ComponentType, string> = {
+      series_L: 'Series Inductor',
+      series_C: 'Series Capacitor',
+      shunt_L: 'Shunt Inductor',
+      shunt_C: 'Shunt Capacitor',
+    };
+
+    const info = getPointInfo(newGamma, state.Z0);
+    const deltaLabel = isSeries ? 'ΔX' : 'ΔB';
+    const desc = `${componentLabels[component]} (${deltaLabel} = ${signedValue >= 0 ? '+' : ''}${signedValue.toFixed(3)}) → Z = ${info.zNorm.toString(3)} (norm), VSWR = ${info.vswr.toFixed(2)}`;
+
+    let newState: SmithState = {
+      ...state,
+      points: [...state.points, newPoint],
+      activePointId: newPoint.id,
+      matchingSteps: [...state.matchingSteps, step],
+    };
+    newState = addLogEntry(newState, desc);
+    pushState(newState);
+  }, [state, pushState, addLogEntry]);
+
+  const handleUndoMatchingStep = useCallback(() => {
+    if (state.matchingSteps.length === 0) return;
+    const lastStep = state.matchingSteps[state.matchingSteps.length - 1];
+    const newState: SmithState = {
+      ...state,
+      points: state.points.filter(p => p.id !== lastStep.pointId),
+      activePointId: state.matchingSteps.length > 1
+        ? state.matchingSteps[state.matchingSteps.length - 2].pointId
+        : (state.points.find(p => p.id !== lastStep.pointId)?.id || null),
+      matchingSteps: state.matchingSteps.slice(0, -1),
+    };
+    pushState(newState);
+  }, [state, pushState]);
+
+  const handleClearMatching = useCallback(() => {
+    const stepPointIds = new Set(state.matchingSteps.map(s => s.pointId));
+    const newState: SmithState = {
+      ...state,
+      points: state.points.filter(p => !stepPointIds.has(p.id)),
+      activePointId: stepPointIds.has(state.activePointId || '')
+        ? (state.points.find(p => !stepPointIds.has(p.id))?.id || null)
+        : state.activePointId,
+      matchingSteps: [],
+    };
+    pushState(newState);
+  }, [state, pushState]);
+
   const handleExportPNG = useCallback(() => {
     const canvas = canvasContainerRef.current?.querySelector('canvas');
     if (!canvas) return;
@@ -190,6 +289,7 @@ const Index = () => {
 
   const tabs: { key: Tab; label: string }[] = [
     { key: 'input', label: 'Input' },
+    { key: 'matching', label: 'Matching' },
     { key: 'points', label: 'Points' },
     { key: 'log', label: 'Solution Log' },
     { key: 'settings', label: 'Settings' },
@@ -272,6 +372,14 @@ const Index = () => {
           <div className="flex-1 overflow-auto">
             {activeTab === 'input' && (
               <InputPanel state={state} onPlotPoint={handlePlotPoint} onNavigate={handleNavigate} />
+            )}
+            {activeTab === 'matching' && (
+              <MatchingPanel
+                state={state}
+                onApplyStep={handleApplyMatchingStep}
+                onUndoStep={handleUndoMatchingStep}
+                onClearMatching={handleClearMatching}
+              />
             )}
             {activeTab === 'points' && (
               <PointsPanel state={state} onSelect={handleSelectPoint} onDelete={handleDeletePoint} onRename={handleRenamePoint} />
