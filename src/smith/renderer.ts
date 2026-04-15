@@ -156,7 +156,6 @@ function drawImpedanceGrid(rc: RenderContext, alpha: number) {
   if (state.display.showResistanceCircles) {
     for (const r of R_VALUES) {
       const circ = resistanceCircle(r);
-      const isR1 = r === 1;
       ctx.beginPath();
       ctx.arc(
         cx + circ.cx * R,
@@ -166,17 +165,10 @@ function drawImpedanceGrid(rc: RenderContext, alpha: number) {
         Math.PI * 2,
       );
 
-      if (isR1) {
-        ctx.strokeStyle = isDark
-          ? `rgba(96,165,250,${alpha})`
-          : `rgba(29,78,216,${alpha})`;
-        ctx.lineWidth = 1.5;
-      } else {
-        ctx.strokeStyle = isDark
-          ? `rgba(59,130,246,${alpha * 0.6})`
-          : `rgba(37,99,235,${alpha * 0.6})`;
-        ctx.lineWidth = 0.5;
-      }
+      ctx.strokeStyle = isDark
+        ? `rgba(59,130,246,${alpha * 0.6})`
+        : `rgba(37,99,235,${alpha * 0.6})`;
+      ctx.lineWidth = 0.5;
       ctx.stroke();
 
       // Label
@@ -234,7 +226,7 @@ function drawAdmittanceGrid(rc: RenderContext, alpha: number) {
       ctx.strokeStyle = isDark
         ? `rgba(20,184,166,${alpha * 0.6})`
         : `rgba(13,148,136,${alpha * 0.6})`;
-      ctx.lineWidth = g === 1 ? 1.5 : 0.5;
+      ctx.lineWidth = 0.5;
       ctx.stroke();
 
       // Label
