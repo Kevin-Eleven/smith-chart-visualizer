@@ -1,18 +1,28 @@
-import { Complex, gammaFromZ, zFromGamma, yFromZ, vswr, returnLoss, wtg, wtl, rotateGamma } from './math';
+import {
+  Complex,
+  gammaFromZ,
+  zFromGamma,
+  yFromZ,
+  vswr,
+  returnLoss,
+  wtg,
+  wtl,
+  rotateGamma,
+} from "./math";
 
 // === MATCHING TYPES ===
 
-export type ComponentType = 'series_L' | 'series_C' | 'shunt_L' | 'shunt_C';
+export type ComponentType = "series_L" | "series_C" | "shunt_L" | "shunt_C";
 
 export interface MatchingStep {
   id: string;
   component: ComponentType;
-  value: number;           // normalized reactance (X) or susceptance (B)
-  startGamma: Complex;     // gamma before this step
-  endGamma: Complex;       // gamma after this step
-  arcPoints: Complex[];    // intermediate points for arc drawing
-  circleParam: number;     // r for series, g for shunt — the constant circle value
-  pointId: string;         // id of the point created by this step
+  value: number; // normalized reactance (X) or susceptance (B)
+  startGamma: Complex; // gamma before this step
+  endGamma: Complex; // gamma after this step
+  arcPoints: Complex[]; // intermediate points for arc drawing
+  circleParam: number; // r for series, g for shunt — the constant circle value
+  pointId: string; // id of the point created by this step
 }
 
 // === STATE MANAGEMENT ===
@@ -22,6 +32,13 @@ export interface SmithPoint {
   label: string;
   gamma: Complex;
   color: string;
+  highlightSettings: PointHighlightSettings;
+}
+
+export interface PointHighlightSettings {
+  showVswrCircle: boolean;
+  showRCircle: boolean;
+  showXArc: boolean;
 }
 
 export interface DisplaySettings {
@@ -39,8 +56,8 @@ export interface DisplaySettings {
   qValues: number[];
 }
 
-export type ChartMode = 'Z' | 'Y' | 'ZY';
-export type ThemeMode = 'light' | 'dark' | 'system';
+export type ChartMode = "Z" | "Y" | "ZY";
+export type ThemeMode = "light" | "dark" | "system";
 
 export interface LogEntry {
   id: string;
@@ -52,18 +69,27 @@ export interface LogEntry {
 export interface SmithState {
   points: SmithPoint[];
   activePointId: string | null;
+  activePointIds: string[];
   chartMode: ChartMode;
   Z0: number;
   frequency: number | null;
-  frequencyUnit: 'MHz' | 'GHz';
+  frequencyUnit: "MHz" | "GHz";
   display: DisplaySettings;
   log: LogEntry[];
   matchingSteps: MatchingStep[];
 }
 
 const POINT_COLORS = [
-  '#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6',
-  '#ec4899', '#06b6d4', '#f97316', '#14b8a6', '#6366f1',
+  "#3b82f6",
+  "#ef4444",
+  "#22c55e",
+  "#f59e0b",
+  "#8b5cf6",
+  "#ec4899",
+  "#06b6d4",
+  "#f97316",
+  "#14b8a6",
+  "#6366f1",
 ];
 
 let colorIndex = 0;
@@ -82,10 +108,11 @@ export function createDefaultState(): SmithState {
   return {
     points: [],
     activePointId: null,
-    chartMode: 'Z',
+    activePointIds: [],
+    chartMode: "Z",
     Z0: 1,
     frequency: null,
-    frequencyUnit: 'GHz',
+    frequencyUnit: "GHz",
     display: {
       showResistanceCircles: true,
       showReactanceArcs: true,
@@ -103,6 +130,49 @@ export function createDefaultState(): SmithState {
     log: [],
     matchingSteps: [],
   };
+}
+
+export function createPointHighlightSettings(defaults?: {
+  showVswrCircle?: boolean;
+  showRCircle?: boolean;
+  showXArc?: boolean;
+}): PointHighlightSettings {
+  return {
+    showVswrCircle: defaults?.showVswrCircle ?? true,
+    showRCircle: defaults?.showRCircle ?? true,
+    showXArc: defaults?.showXArc ?? true,
+  };
+}
+
+function normalizePointHighlightSettings(
+  input: unknown,
+  fallback: PointHighlightSettings,
+): PointHighlightSettings {
+  if (!input || typeof input !== "object") {
+    return { ...fallback };
+  }
+
+  const data = input as Record<string, unknown>;
+  const showVswrCircle =
+    typeof data.showVswrCircle === "boolean"
+      ? data.showVswrCircle
+      : typeof data.showVswr === "boolean"
+        ? data.showVswr
+        : fallback.showVswrCircle;
+  const showRCircle =
+    typeof data.showRCircle === "boolean"
+      ? data.showRCircle
+      : typeof data.showR === "boolean"
+        ? data.showR
+        : fallback.showRCircle;
+  const showXArc =
+    typeof data.showXArc === "boolean"
+      ? data.showXArc
+      : typeof data.showX === "boolean"
+        ? data.showX
+        : fallback.showXArc;
+
+  return { showVswrCircle, showRCircle, showXArc };
 }
 
 let idCounter = 0;
@@ -133,9 +203,9 @@ export function getPointInfo(gamma: Complex, Z0: number) {
 // === LOCALSTORAGE PERSISTENCE ===
 export function saveStateToStorage(state: SmithState): void {
   try {
-    localStorage.setItem('smithChart_state', JSON.stringify(state));
+    localStorage.setItem("smithChart_state", JSON.stringify(state));
   } catch (e) {
-    console.warn('Failed to save state to localStorage:', e);
+    console.warn("Failed to save state to localStorage:", e);
   }
 }
 
@@ -143,9 +213,11 @@ function reviveComplex(c: { re: number; im: number }): Complex {
   return new Complex(c.re, c.im);
 }
 
-function reviveMatchingSteps(steps: MatchingStep[] | undefined): MatchingStep[] {
+function reviveMatchingSteps(
+  steps: MatchingStep[] | undefined,
+): MatchingStep[] {
   if (!steps) return [];
-  return steps.map(s => ({
+  return steps.map((s) => ({
     ...s,
     startGamma: reviveComplex(s.startGamma),
     endGamma: reviveComplex(s.endGamma),
@@ -155,37 +227,92 @@ function reviveMatchingSteps(steps: MatchingStep[] | undefined): MatchingStep[] 
 
 export function loadStateFromStorage(): SmithState | null {
   try {
-    const saved = localStorage.getItem('smithChart_state');
+    const saved = localStorage.getItem("smithChart_state");
     if (!saved) return null;
-    const parsed = JSON.parse(saved) as SmithState;
-    // Revive Complex objects
-    parsed.points = parsed.points.map(p => ({
-      ...p,
-      gamma: reviveComplex(p.gamma),
-    }));
-    parsed.matchingSteps = reviveMatchingSteps(parsed.matchingSteps);
-    return parsed;
+    const parsed = JSON.parse(saved) as Partial<SmithState>;
+    const defaults = createDefaultState();
+    const display = { ...defaults.display, ...(parsed.display ?? {}) };
+    const fallbackHighlightSettings = createPointHighlightSettings(display);
+
+    const points = Array.isArray(parsed.points)
+      ? parsed.points
+          .map((p) => {
+            const gamma = p.gamma as { re: number; im: number } | undefined;
+            if (
+              !gamma ||
+              typeof gamma.re !== "number" ||
+              typeof gamma.im !== "number"
+            ) {
+              return null;
+            }
+
+            return {
+              id: typeof p.id === "string" ? p.id : genId(),
+              label: typeof p.label === "string" ? p.label : "P",
+              gamma: reviveComplex(gamma),
+              color: typeof p.color === "string" ? p.color : "#3b82f6",
+              highlightSettings: normalizePointHighlightSettings(
+                (p as Record<string, unknown>).highlightSettings ??
+                  (p as Record<string, unknown>).circleTypes,
+                fallbackHighlightSettings,
+              ),
+            } as SmithPoint;
+          })
+          .filter((p): p is SmithPoint => p !== null)
+      : [];
+
+    const pointIdSet = new Set(points.map((p) => p.id));
+
+    const activePointId =
+      typeof parsed.activePointId === "string" &&
+      pointIdSet.has(parsed.activePointId)
+        ? parsed.activePointId
+        : null;
+
+    let activePointIds = Array.isArray(
+      (parsed as { activePointIds?: unknown }).activePointIds,
+    )
+      ? (parsed as { activePointIds: unknown[] }).activePointIds.filter(
+          (id): id is string => typeof id === "string" && pointIdSet.has(id),
+        )
+      : [];
+
+    if (activePointIds.length === 0 && activePointId) {
+      activePointIds = [activePointId];
+    }
+
+    activePointIds = Array.from(new Set(activePointIds));
+
+    return {
+      ...defaults,
+      ...parsed,
+      points,
+      activePointId,
+      activePointIds,
+      display,
+      matchingSteps: reviveMatchingSteps(parsed.matchingSteps),
+    };
   } catch (e) {
-    console.warn('Failed to load state from localStorage:', e);
+    console.warn("Failed to load state from localStorage:", e);
     return null;
   }
 }
 
 export function saveThemeToStorage(isDark: boolean): void {
   try {
-    localStorage.setItem('smithChart_theme', isDark ? 'dark' : 'light');
+    localStorage.setItem("smithChart_theme", isDark ? "dark" : "light");
   } catch (e) {
-    console.warn('Failed to save theme to localStorage:', e);
+    console.warn("Failed to save theme to localStorage:", e);
   }
 }
 
 export function loadThemeFromStorage(): boolean | null {
   try {
-    const saved = localStorage.getItem('smithChart_theme');
+    const saved = localStorage.getItem("smithChart_theme");
     if (!saved) return null;
-    return saved === 'dark';
+    return saved === "dark";
   } catch (e) {
-    console.warn('Failed to load theme from localStorage:', e);
+    console.warn("Failed to load theme from localStorage:", e);
     return null;
   }
 }
@@ -241,10 +368,30 @@ export class StateHistory {
   private revive(state: SmithState): SmithState {
     // Reconstruct Complex instances from plain objects
     const s = JSON.parse(JSON.stringify(state)) as SmithState;
-    s.points = s.points.map(p => ({
+    const fallbackHighlightSettings = createPointHighlightSettings(s.display);
+    s.points = s.points.map((p) => ({
       ...p,
       gamma: new Complex(p.gamma.re, p.gamma.im),
+      highlightSettings: normalizePointHighlightSettings(
+        (p as Record<string, unknown>).highlightSettings,
+        fallbackHighlightSettings,
+      ),
     }));
+    const pointIdSet = new Set(s.points.map((p) => p.id));
+    s.activePointId =
+      s.activePointId && pointIdSet.has(s.activePointId)
+        ? s.activePointId
+        : null;
+
+    let activePointIds = Array.isArray(s.activePointIds)
+      ? s.activePointIds.filter((id) => pointIdSet.has(id))
+      : [];
+
+    if (activePointIds.length === 0 && s.activePointId) {
+      activePointIds = [s.activePointId];
+    }
+
+    s.activePointIds = Array.from(new Set(activePointIds));
     s.matchingSteps = reviveMatchingSteps(s.matchingSteps);
     return s;
   }

@@ -89,9 +89,11 @@ export function renderSmithChart(
   }
 
   // Active point highlights
-  const activePoint = state.points.find((p) => p.id === state.activePointId);
-  if (activePoint) {
-    drawPointHighlights(rc, activePoint);
+  const activeIds = new Set(state.activePointIds);
+  for (const point of state.points) {
+    if (activeIds.has(point.id)) {
+      drawPointHighlights(rc, point);
+    }
   }
 
   // Path
@@ -319,9 +321,7 @@ function drawReactanceArcClipped(
     const textX = arcCx + arcR * Math.cos(textAngle);
     const textY = arcCy + arcR * Math.sin(textAngle);
 
-    ctx.fillStyle = isDark
-      ? `rgba(251,191,36)`
-      : `rgba(180, 83, 9, 1)`;
+    ctx.fillStyle = isDark ? `rgba(251,191,36)` : `rgba(180, 83, 9, 1)`;
     ctx.font = '10px "JetBrains Mono", monospace';
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -336,9 +336,7 @@ function drawReactanceArcClipped(
     const textX = arcCx + arcR * Math.cos(textAngle);
     const textY = arcCy + arcR * Math.sin(textAngle);
 
-    ctx.fillStyle = isDark
-      ? `rgb(157, 112, 235)`
-      : `rgb(75, 15, 160)`;
+    ctx.fillStyle = isDark ? `rgb(157, 112, 235)` : `rgb(75, 15, 160)`;
     ctx.font = '10px "JetBrains Mono", monospace';
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -391,9 +389,14 @@ function drawPointHighlights(rc: RenderContext, point: SmithPoint) {
   const { ctx, cx, cy, R, isDark, state } = rc;
   const gamma = new Complex(point.gamma.re, point.gamma.im);
   const mag = gamma.abs();
+  const highlightSettings = point.highlightSettings ?? {
+    showVswrCircle: state.display.showVswrCircle,
+    showRCircle: state.display.showRCircle,
+    showXArc: state.display.showXArc,
+  };
 
   // VSWR circle
-  if (state.display.showVswrCircle) {
+  if (highlightSettings.showVswrCircle) {
     ctx.beginPath();
     ctx.arc(cx, cy, mag * R, 0, Math.PI * 2);
     ctx.strokeStyle = "#dc2626";
@@ -404,7 +407,7 @@ function drawPointHighlights(rc: RenderContext, point: SmithPoint) {
   }
 
   // r-circle highlight
-  if (state.display.showRCircle) {
+  if (highlightSettings.showRCircle) {
     const zn = new Complex(1).add(gamma).div(new Complex(1).sub(gamma));
     const r = zn.re;
     if (r >= 0 && isFinite(r)) {
@@ -418,7 +421,7 @@ function drawPointHighlights(rc: RenderContext, point: SmithPoint) {
   }
 
   // x-arc highlight
-  if (state.display.showXArc) {
+  if (highlightSettings.showXArc) {
     const zn = new Complex(1).add(gamma).div(new Complex(1).sub(gamma));
     const x = zn.im;
     if (Math.abs(x) > 0.01 && isFinite(x)) {
@@ -514,36 +517,40 @@ function drawMatchingArcs(rc: RenderContext) {
   const { ctx, cx, cy, R, isDark, state } = rc;
 
   const ARC_COLORS: Record<string, string> = {
-    series_L: '#16a34a',
-    series_C: '#2563eb',
-    shunt_L:  '#d97706',
-    shunt_C:  '#8b5cf6',
+    series_L: "#16a34a",
+    series_C: "#2563eb",
+    shunt_L: "#d97706",
+    shunt_C: "#8b5cf6",
   };
 
   const COMPONENT_LABELS: Record<string, string> = {
-    series_L: 'L',
-    series_C: 'C',
-    shunt_L:  'L',
-    shunt_C:  'C',
+    series_L: "L",
+    series_C: "C",
+    shunt_L: "L",
+    shunt_C: "C",
   };
 
   for (const step of state.matchingSteps) {
     if (step.arcPoints.length < 2) continue;
 
-    const color = ARC_COLORS[step.component] || '#888';
+    const color = ARC_COLORS[step.component] || "#888";
 
     // Draw the arc path
     ctx.beginPath();
     const p0 = gammaToCanvas(
       new Complex(step.arcPoints[0].re, step.arcPoints[0].im),
-      cx, cy, R
+      cx,
+      cy,
+      R,
     );
     ctx.moveTo(p0.x, p0.y);
 
     for (let i = 1; i < step.arcPoints.length; i++) {
       const pi = gammaToCanvas(
         new Complex(step.arcPoints[i].re, step.arcPoints[i].im),
-        cx, cy, R
+        cx,
+        cy,
+        R,
       );
       ctx.lineTo(pi.x, pi.y);
     }
@@ -557,11 +564,15 @@ function drawMatchingArcs(rc: RenderContext) {
     if (len >= 2) {
       const pEnd = gammaToCanvas(
         new Complex(step.arcPoints[len - 1].re, step.arcPoints[len - 1].im),
-        cx, cy, R
+        cx,
+        cy,
+        R,
       );
       const pPrev = gammaToCanvas(
         new Complex(step.arcPoints[len - 2].re, step.arcPoints[len - 2].im),
-        cx, cy, R
+        cx,
+        cy,
+        R,
       );
 
       const angle = Math.atan2(pEnd.y - pPrev.y, pEnd.x - pPrev.x);
@@ -572,12 +583,12 @@ function drawMatchingArcs(rc: RenderContext) {
       ctx.moveTo(pEnd.x, pEnd.y);
       ctx.lineTo(
         pEnd.x - arrowLen * Math.cos(angle - arrowWidth),
-        pEnd.y - arrowLen * Math.sin(angle - arrowWidth)
+        pEnd.y - arrowLen * Math.sin(angle - arrowWidth),
       );
       ctx.moveTo(pEnd.x, pEnd.y);
       ctx.lineTo(
         pEnd.x - arrowLen * Math.cos(angle + arrowWidth),
-        pEnd.y - arrowLen * Math.sin(angle + arrowWidth)
+        pEnd.y - arrowLen * Math.sin(angle + arrowWidth),
       );
       ctx.strokeStyle = color;
       ctx.lineWidth = 2;
@@ -588,17 +599,20 @@ function drawMatchingArcs(rc: RenderContext) {
     const midIdx = Math.floor(step.arcPoints.length / 2);
     const pMid = gammaToCanvas(
       new Complex(step.arcPoints[midIdx].re, step.arcPoints[midIdx].im),
-      cx, cy, R
+      cx,
+      cy,
+      R,
     );
 
-    const isShunt = step.component === 'shunt_L' || step.component === 'shunt_C';
-    const deltaSymbol = isShunt ? 'ΔB' : 'ΔX';
-    const labelText = `${COMPONENT_LABELS[step.component]} ${deltaSymbol}=${step.value >= 0 ? '+' : ''}${step.value.toFixed(2)}`;
+    const isShunt =
+      step.component === "shunt_L" || step.component === "shunt_C";
+    const deltaSymbol = isShunt ? "ΔB" : "ΔX";
+    const labelText = `${COMPONENT_LABELS[step.component]} ${deltaSymbol}=${step.value >= 0 ? "+" : ""}${step.value.toFixed(2)}`;
 
     ctx.fillStyle = color;
     ctx.font = 'bold 9px "JetBrains Mono", monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
 
     // Offset label away from center
     const dx = pMid.x - cx;
@@ -611,8 +625,13 @@ function drawMatchingArcs(rc: RenderContext) {
     // Background for readability
     const metrics = ctx.measureText(labelText);
     const pad = 2;
-    ctx.fillStyle = isDark ? 'rgba(15,19,24,0.85)' : 'rgba(255,255,255,0.85)';
-    ctx.fillRect(lx - metrics.width / 2 - pad, ly - 6 - pad, metrics.width + pad * 2, 12 + pad * 2);
+    ctx.fillStyle = isDark ? "rgba(15,19,24,0.85)" : "rgba(255,255,255,0.85)";
+    ctx.fillRect(
+      lx - metrics.width / 2 - pad,
+      ly - 6 - pad,
+      metrics.width + pad * 2,
+      12 + pad * 2,
+    );
 
     ctx.fillStyle = color;
     ctx.fillText(labelText, lx, ly);

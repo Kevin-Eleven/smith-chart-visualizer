@@ -10,6 +10,7 @@ import {
 } from "@/smith/math";
 import {
   createDefaultState,
+  createPointHighlightSettings,
   genId,
   nextPointColor,
   resetColorIndex,
@@ -91,11 +92,20 @@ const Index = () => {
       const info = getPointInfo(gamma, state.Z0);
       const label = `P${state.points.length + 1}`;
       const color = nextPointColor();
-      const newPoint = { id: genId(), label, gamma, color };
+      const newPoint = {
+        id: genId(),
+        label,
+        gamma,
+        color,
+        highlightSettings: createPointHighlightSettings(state.display),
+      };
       let newState = {
         ...state,
         points: [...state.points, newPoint],
         activePointId: newPoint.id,
+        activePointIds: Array.from(
+          new Set([...state.activePointIds, newPoint.id]),
+        ),
       };
       const fullDesc = `${description} → Γ = ${info.gammaMag.toFixed(3)}∠${info.gammaAngle.toFixed(1)}°, VSWR = ${info.vswr.toFixed(2)}`;
       newState = addLogEntry(newState, fullDesc);
@@ -118,11 +128,20 @@ const Index = () => {
       const info = getPointInfo(gamma, state.Z0);
       const label = `P${state.points.length + 1}`;
       const color = nextPointColor();
-      const newPoint = { id: genId(), label, gamma, color };
+      const newPoint = {
+        id: genId(),
+        label,
+        gamma,
+        color,
+        highlightSettings: createPointHighlightSettings(state.display),
+      };
       let newState = {
         ...state,
         points: [...state.points, newPoint],
         activePointId: newPoint.id,
+        activePointIds: Array.from(
+          new Set([...state.activePointIds, newPoint.id]),
+        ),
       };
       const fullDesc = `${description} → Z = ${info.zNorm.re.toFixed(3)} ${info.zNorm.im >= 0 ? "+" : "-"} j${Math.abs(info.zNorm.im).toFixed(3)} (norm)`;
       newState = addLogEntry(newState, fullDesc);
@@ -141,8 +160,25 @@ const Index = () => {
         ...state,
         points: state.points.filter((p) => p.id !== id),
         activePointId: state.activePointId === id ? null : state.activePointId,
+        activePointIds: state.activePointIds.filter(
+          (pointId) => pointId !== id,
+        ),
       };
       pushState(newState);
+    },
+    [state, pushState],
+  );
+
+  const handleTogglePointActive = useCallback(
+    (id: string, isActive: boolean) => {
+      const activePointIds = isActive
+        ? Array.from(new Set([...state.activePointIds, id]))
+        : state.activePointIds.filter((pointId) => pointId !== id);
+
+      pushState({
+        ...state,
+        activePointIds,
+      });
     },
     [state, pushState],
   );
@@ -163,6 +199,34 @@ const Index = () => {
   const handleChartMode = useCallback(
     (mode: ChartMode) => {
       pushState({ ...state, chartMode: mode });
+    },
+    [state, pushState],
+  );
+
+  const handleUpdateSelectedPointHighlights = useCallback(
+    (updates: {
+      showVswrCircle?: boolean;
+      showRCircle?: boolean;
+      showXArc?: boolean;
+    }) => {
+      if (!state.activePointId) return;
+
+      const newState = {
+        ...state,
+        points: state.points.map((point) =>
+          point.id === state.activePointId
+            ? {
+                ...point,
+                highlightSettings: {
+                  ...point.highlightSettings,
+                  ...updates,
+                },
+              }
+            : point,
+        ),
+      };
+
+      pushState(newState);
     },
     [state, pushState],
   );
@@ -237,7 +301,13 @@ const Index = () => {
       // Create new point
       const label = `P${state.points.length + 1}`;
       const color = nextPointColor();
-      const newPoint = { id: genId(), label, gamma: newGamma, color };
+      const newPoint = {
+        id: genId(),
+        label,
+        gamma: newGamma,
+        color,
+        highlightSettings: createPointHighlightSettings(state.display),
+      };
 
       // Create matching step
       const step: MatchingStep = {
@@ -266,6 +336,9 @@ const Index = () => {
         ...state,
         points: [...state.points, newPoint],
         activePointId: newPoint.id,
+        activePointIds: Array.from(
+          new Set([...state.activePointIds, newPoint.id]),
+        ),
         matchingSteps: [...state.matchingSteps, step],
       };
       newState = addLogEntry(newState, desc);
@@ -284,6 +357,9 @@ const Index = () => {
         state.matchingSteps.length > 1
           ? state.matchingSteps[state.matchingSteps.length - 2].pointId
           : state.points.find((p) => p.id !== lastStep.pointId)?.id || null,
+      activePointIds: state.activePointIds.filter(
+        (pointId) => pointId !== lastStep.pointId,
+      ),
       matchingSteps: state.matchingSteps.slice(0, -1),
     };
     pushState(newState);
@@ -297,6 +373,9 @@ const Index = () => {
       activePointId: stepPointIds.has(state.activePointId || "")
         ? state.points.find((p) => !stepPointIds.has(p.id))?.id || null
         : state.activePointId,
+      activePointIds: state.activePointIds.filter(
+        (pointId) => !stepPointIds.has(pointId),
+      ),
       matchingSteps: [],
     };
     pushState(newState);
@@ -345,6 +424,9 @@ const Index = () => {
     { key: "points", label: "Points" },
     { key: "settings", label: "Settings" },
   ];
+
+  const selectedPoint =
+    state.points.find((p) => p.id === state.activePointId) || null;
 
   const modeBtn = (mode: ChartMode, label: string) => (
     <button
@@ -472,16 +554,21 @@ const Index = () => {
                 onSelect={handleSelectPoint}
                 onDelete={handleDeletePoint}
                 onRename={handleRenamePoint}
+                onToggleActive={handleTogglePointActive}
               />
             )}
             {activeTab === "settings" && (
               <SettingsPanel
                 state={state}
+                selectedPoint={selectedPoint}
                 onUpdateDisplay={(updates) =>
                   pushState({
                     ...state,
                     display: { ...state.display, ...updates },
                   })
+                }
+                onUpdateSelectedPointHighlights={
+                  handleUpdateSelectedPointHighlights
                 }
                 onUpdateZ0={(z0) => pushState({ ...state, Z0: z0 })}
                 onUpdateFrequency={(freq, unit) =>
