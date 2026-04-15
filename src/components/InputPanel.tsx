@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Complex, gammaFromZ, s11DbToLinear } from '@/smith/math';
-import { rotateGamma, shortStubImpedance, openStubImpedance, yFromZ, zFromY } from '@/smith/math';
+import { rotateGamma, zFromY } from '@/smith/math';
 import type { SmithState } from '@/smith/state';
 
 type InputFormat = 'Z' | 'gamma' | 'S11' | 'Y';
@@ -13,8 +13,8 @@ interface Props {
 
 export default function InputPanel({ state, onPlotPoint, onNavigate }: Props) {
   const [format, setFormat] = useState<InputFormat>('Z');
-  const [zReal, setZReal] = useState('75');
-  const [zImag, setZImag] = useState('25');
+  const [zReal, setZReal] = useState('0.4');
+  const [zImag, setZImag] = useState('0.6');
   const [z0Input, setZ0Input] = useState(state.Z0.toString());
   const [gammaMag, setGammaMag] = useState('0.5');
   const [gammaAng, setGammaAng] = useState('45');
@@ -24,8 +24,6 @@ export default function InputPanel({ state, onPlotPoint, onNavigate }: Props) {
   const [yImag, setYImag] = useState('-0.005');
   const [y0Input, setY0Input] = useState('0.02');
   const [moveDistance, setMoveDistance] = useState('0.15');
-  const [stubLength, setStubLength] = useState('0.125');
-  const [stubType, setStubType] = useState<'open' | 'short'>('open');
 
   const activePoint = state.points.find(p => p.id === state.activePointId);
 
@@ -89,33 +87,6 @@ export default function InputPanel({ state, onPlotPoint, onNavigate }: Props) {
     onNavigate(newGamma, `Moved ${d.toFixed(3)}λ toward load`);
   };
 
-  const handleShuntStub = () => {
-    if (!activePoint) return;
-    const l = parseFloat(stubLength) || 0;
-    const g = new Complex(activePoint.gamma.re, activePoint.gamma.im);
-    // Get current admittance
-    const zn = new Complex(1).add(g).div(new Complex(1).sub(g));
-    const yn = yFromZ(zn);
-    // Stub admittance
-    const stubZ = stubType === 'open' ? openStubImpedance(l) : shortStubImpedance(l);
-    const stubY = yFromZ(stubZ);
-    // Add in shunt (add admittances)
-    const newY = yn.add(stubY);
-    const newZ = zFromY(newY);
-    const newGamma = gammaFromZ(newZ);
-    onNavigate(newGamma, `Added shunt ${stubType} stub (l = ${l.toFixed(3)}λ) → ΔB = ${stubY.im >= 0 ? '+' : ''}${stubY.im.toFixed(3)}`);
-  };
-
-  const handleSeriesStub = () => {
-    if (!activePoint) return;
-    const l = parseFloat(stubLength) || 0;
-    const g = new Complex(activePoint.gamma.re, activePoint.gamma.im);
-    const zn = new Complex(1).add(g).div(new Complex(1).sub(g));
-    const stubZ = stubType === 'open' ? openStubImpedance(l) : shortStubImpedance(l);
-    const newZ = zn.add(stubZ);
-    const newGamma = gammaFromZ(newZ);
-    onNavigate(newGamma, `Added series ${stubType} stub (l = ${l.toFixed(3)}λ) → ΔX = ${stubZ.im >= 0 ? '+' : ''}${stubZ.im.toFixed(3)}`);
-  };
 
   const radioClass = (active: boolean) =>
     `px-3 py-1 rounded text-xs font-medium cursor-pointer transition-colors ${
@@ -213,20 +184,6 @@ export default function InputPanel({ state, onPlotPoint, onNavigate }: Props) {
           <button className="smith-btn-secondary text-xs whitespace-nowrap" onClick={handleMoveLoad} disabled={!activePoint}>→ Load</button>
         </div>
 
-        <div className="flex gap-2 items-end">
-          <div className="flex-1">
-            <label className="block text-xs text-muted-foreground mb-0.5">Stub (λ)</label>
-            <input className="smith-input w-full" value={stubLength} onChange={e => setStubLength(e.target.value)} />
-          </div>
-          <select className="smith-input py-1.5" value={stubType} onChange={e => setStubType(e.target.value as 'open' | 'short')}>
-            <option value="open">Open</option>
-            <option value="short">Short</option>
-          </select>
-        </div>
-        <div className="flex gap-2">
-          <button className="smith-btn-secondary text-xs flex-1" onClick={handleShuntStub} disabled={!activePoint}>+ Shunt Stub</button>
-          <button className="smith-btn-secondary text-xs flex-1" onClick={handleSeriesStub} disabled={!activePoint}>+ Series Stub</button>
-        </div>
       </div>
     </div>
   );
