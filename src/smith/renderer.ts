@@ -51,7 +51,10 @@ export function renderSmithChart(
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
   // Clear
-  ctx.fillStyle = isDark ? "#0f1318" : "#ffffff";
+  const chartBg = getComputedStyle(document.documentElement)
+    .getPropertyValue("--chart-bg")
+    .trim();
+  ctx.fillStyle = isDark ? "#0f1318" : `hsl(${chartBg || "60 42% 94%"})`;
   ctx.fillRect(0, 0, w, h);
 
   const margin = state.display.showOuterScales ? 55 : 15;

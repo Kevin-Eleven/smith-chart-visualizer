@@ -6,13 +6,13 @@
 
 @layer base {
   :root {
-    --background: 220 20% 97%;
+    --background: 60 42% 94%;
     --foreground: 220 25% 10%;
 
-    --card: 0 0% 100%;
+    --card: 60 42% 94%;
     --card-foreground: 220 25% 10%;
 
-    --popover: 0 0% 100%;
+    --popover: 60 42% 94%;
     --popover-foreground: 220 25% 10%;
 
     --primary: 220 70% 50%;
@@ -37,7 +37,7 @@
     --radius: 0.5rem;
 
     /* Smith Chart specific tokens */
-    --chart-bg: 0 0% 100%;
+    --chart-bg: 60 42% 94%;
     --chart-resistance: 220 76% 53%;
     --chart-reactance: 38 90% 46%;
     --chart-r1-accent: 225 76% 52%;
@@ -52,7 +52,7 @@
     --chart-point-active-ring: 220 70% 50%;
     --chart-grid-opacity: 0.6;
 
-    --panel-bg: 0 0% 100%;
+    --panel-bg: 60 42% 94%;
     --panel-header: 220 25% 15%;
     --panel-border: 220 15% 88%;
 
@@ -67,7 +67,7 @@
     --tooltip-bg: 220 25% 12%;
     --tooltip-fg: 220 15% 92%;
 
-    --sidebar-background: 0 0% 98%;
+    --sidebar-background: 60 42% 94%;
     --sidebar-foreground: 240 5.3% 26.1%;
     --sidebar-primary: 240 5.9% 10%;
     --sidebar-primary-foreground: 0 0% 98%;
