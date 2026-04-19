@@ -178,7 +178,9 @@ function normalizePointHighlightSettings(
         ? data.showX
         : fallback.showXArc;
   const showGCircle =
-    typeof data.showGCircle === "boolean" ? data.showGCircle : fallback.showGCircle;
+    typeof data.showGCircle === "boolean"
+      ? data.showGCircle
+      : fallback.showGCircle;
   const showBArc =
     typeof data.showBArc === "boolean" ? data.showBArc : fallback.showBArc;
 
