@@ -158,6 +158,36 @@ export default function SettingsPanel({
               {pointCheckboxRow("showVswrCircle", "VSWR circle")}
               {pointCheckboxRow("showRCircle", "Constant-r circle")}
               {pointCheckboxRow("showXArc", "Constant-x arc")}
+              {pointCheckboxRow("showGCircle", "Constant-g circle")}
+              {pointCheckboxRow("showBArc", "Constant-b arc")}
+            </div>
+            <div className="flex gap-2 mt-2">
+              <button
+                className="smith-btn text-xs flex-1"
+                onClick={() =>
+                  onUpdateSelectedPointHighlights({
+                    showRCircle: true,
+                    showXArc: true,
+                    showGCircle: false,
+                    showBArc: false,
+                  })
+                }
+              >
+                All R
+              </button>
+              <button
+                className="smith-btn text-xs flex-1"
+                onClick={() =>
+                  onUpdateSelectedPointHighlights({
+                    showRCircle: false,
+                    showXArc: false,
+                    showGCircle: true,
+                    showBArc: true,
+                  })
+                }
+              >
+                All Y
+              </button>
             </div>
           </>
         ) : (

@@ -39,6 +39,8 @@ export interface PointHighlightSettings {
   showVswrCircle: boolean;
   showRCircle: boolean;
   showXArc: boolean;
+  showGCircle: boolean;
+  showBArc: boolean;
 }
 
 export interface DisplaySettings {
@@ -136,11 +138,15 @@ export function createPointHighlightSettings(defaults?: {
   showVswrCircle?: boolean;
   showRCircle?: boolean;
   showXArc?: boolean;
+  showGCircle?: boolean;
+  showBArc?: boolean;
 }): PointHighlightSettings {
   return {
     showVswrCircle: defaults?.showVswrCircle ?? true,
     showRCircle: defaults?.showRCircle ?? true,
     showXArc: defaults?.showXArc ?? true,
+    showGCircle: defaults?.showGCircle ?? false,
+    showBArc: defaults?.showBArc ?? false,
   };
 }
 
@@ -171,8 +177,12 @@ function normalizePointHighlightSettings(
       : typeof data.showX === "boolean"
         ? data.showX
         : fallback.showXArc;
+  const showGCircle =
+    typeof data.showGCircle === "boolean" ? data.showGCircle : fallback.showGCircle;
+  const showBArc =
+    typeof data.showBArc === "boolean" ? data.showBArc : fallback.showBArc;
 
-  return { showVswrCircle, showRCircle, showXArc };
+  return { showVswrCircle, showRCircle, showXArc, showGCircle, showBArc };
 }
 
 let idCounter = 0;

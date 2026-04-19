@@ -396,6 +396,8 @@ function drawPointHighlights(rc: RenderContext, point: SmithPoint) {
     showVswrCircle: state.display.showVswrCircle,
     showRCircle: state.display.showRCircle,
     showXArc: state.display.showXArc,
+    showGCircle: false,
+    showBArc: false,
   };
 
   // VSWR circle
@@ -448,6 +450,51 @@ function drawPointHighlights(rc: RenderContext, point: SmithPoint) {
           angleFromArc + halfAngle,
         );
         ctx.strokeStyle = "#d97706";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+    }
+  }
+
+  // g-circle highlight (constant conductance, admittance plane)
+  if (highlightSettings.showGCircle) {
+    const yn = new Complex(1).sub(gamma).div(new Complex(1).add(gamma));
+    const g = yn.re;
+    if (g >= 0 && isFinite(g)) {
+      const circ = { cx: -g / (g + 1), cy: 0, radius: 1 / (g + 1) };
+      ctx.beginPath();
+      ctx.arc(cx + circ.cx * R, cy, circ.radius * R, 0, Math.PI * 2);
+      ctx.strokeStyle = "#2563eb";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+  }
+
+  // b-arc highlight (constant susceptance, admittance plane)
+  if (highlightSettings.showBArc) {
+    const yn = new Complex(1).sub(gamma).div(new Complex(1).add(gamma));
+    const b = yn.im;
+    if (Math.abs(b) > 0.01 && isFinite(b)) {
+      const arc = { cx: -1, cy: 1 / b, radius: 1 / Math.abs(b) };
+      const arcCx = cx + arc.cx * R;
+      const arcCy = cy - arc.cy * R;
+      const arcR = arc.radius * R;
+
+      const d = Math.sqrt((arcCx - cx) ** 2 + (arcCy - cy) ** 2);
+      if (d <= R + arcR && d >= Math.abs(R - arcR)) {
+        const cosA = (arcR * arcR + d * d - R * R) / (2 * arcR * d);
+        const halfAngle = Math.acos(Math.max(-1, Math.min(1, cosA)));
+        const angleFromArc = Math.atan2(cy - arcCy, cx - arcCx);
+
+        ctx.beginPath();
+        ctx.arc(
+          arcCx,
+          arcCy,
+          arcR,
+          angleFromArc - halfAngle,
+          angleFromArc + halfAngle,
+        );
+        ctx.strokeStyle = "#9333ea";
         ctx.lineWidth = 2;
         ctx.stroke();
       }

@@ -208,6 +208,8 @@ const Index = () => {
       showVswrCircle?: boolean;
       showRCircle?: boolean;
       showXArc?: boolean;
+      showGCircle?: boolean;
+      showBArc?: boolean;
     }) => {
       if (!state.activePointId) return;
 
