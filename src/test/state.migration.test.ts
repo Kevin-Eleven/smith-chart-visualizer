@@ -58,12 +58,16 @@ describe("smith state migrations", () => {
     expect(loaded).not.toBeNull();
     expect(loaded?.activePointId).toBe("p2");
     expect(loaded?.activePointIds).toEqual(["p2"]);
+    expect(loaded?.points[0]?.z0).toBe(50);
+    expect(loaded?.points[1]?.z0).toBe(50);
 
     for (const point of loaded?.points ?? []) {
       expect(point.highlightSettings).toEqual({
         showVswrCircle: false,
         showRCircle: true,
         showXArc: false,
+        showGCircle: false,
+        showBArc: false,
       });
     }
   });
@@ -76,6 +80,7 @@ describe("smith state migrations", () => {
           id: "p1",
           label: "P1",
           gamma: new Complex(0.1, 0.2),
+          z0: 25,
           color: "#3b82f6",
           highlightSettings: {
             showVswrCircle: true,
@@ -87,6 +92,7 @@ describe("smith state migrations", () => {
           id: "p2",
           label: "P2",
           gamma: new Complex(-0.25, 0.15),
+          z0: 25,
           color: "#ef4444",
           highlightSettings: {
             showVswrCircle: false,
@@ -108,15 +114,21 @@ describe("smith state migrations", () => {
     const p1 = loaded?.points.find((p) => p.id === "p1");
     const p2 = loaded?.points.find((p) => p.id === "p2");
 
+    expect(p1?.z0).toBe(25);
+    expect(p2?.z0).toBe(25);
     expect(p1?.highlightSettings).toEqual({
       showVswrCircle: true,
       showRCircle: false,
       showXArc: true,
+      showGCircle: false,
+      showBArc: false,
     });
     expect(p2?.highlightSettings).toEqual({
       showVswrCircle: false,
       showRCircle: true,
       showXArc: false,
+      showGCircle: false,
+      showBArc: false,
     });
   });
 });

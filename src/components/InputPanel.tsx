@@ -7,8 +7,8 @@ type InputFormat = "Z" | "gamma" | "S11" | "Y";
 
 interface Props {
   state: SmithState;
-  onPlotPoint: (gamma: Complex, description: string) => void;
-  onNavigate: (gamma: Complex, description: string) => void;
+  onPlotPoint: (gamma: Complex, description: string, z0: number) => void;
+  onNavigate: (gamma: Complex, description: string, z0: number) => void;
 }
 
 export default function InputPanel({ state, onPlotPoint, onNavigate }: Props) {
@@ -30,15 +30,16 @@ export default function InputPanel({ state, onPlotPoint, onNavigate }: Props) {
   useEffect(() => {
     if (!activePoint) return;
 
+    const pointZ0 = activePoint.z0 || state.Z0;
     const gamma = new Complex(activePoint.gamma.re, activePoint.gamma.im);
-    const info = getPointInfo(gamma, state.Z0);
+    const info = getPointInfo(gamma, pointZ0);
     const gammaMagValue = info.gammaMag;
-    const y0 = state.Z0 !== 0 ? 1 / state.Z0 : 0;
+    const y0 = pointZ0 !== 0 ? 1 / pointZ0 : 0;
     const s11Db = gammaMagValue > 0 ? 20 * Math.log10(gammaMagValue) : -120;
 
     setZReal(info.z.re.toFixed(4));
     setZImag(info.z.im.toFixed(4));
-    setZ0Input(state.Z0.toString());
+    setZ0Input(pointZ0.toString());
 
     setGammaMag(gammaMagValue.toFixed(6));
     setGammaAng(info.gammaAngle.toFixed(3));
@@ -63,6 +64,7 @@ export default function InputPanel({ state, onPlotPoint, onNavigate }: Props) {
         const zn = new Complex(zr / Z0, zi / Z0);
         gamma = gammaFromZ(zn);
         desc = `Plotted Z = ${zr} ${zi >= 0 ? "+" : "-"} j${Math.abs(zi)} Ω (Z₀ = ${Z0} Ω)`;
+        onPlotPoint(gamma, desc, Z0);
         break;
       }
       case "gamma": {
@@ -70,6 +72,7 @@ export default function InputPanel({ state, onPlotPoint, onNavigate }: Props) {
         const ang = parseFloat(gammaAng) || 0;
         gamma = Complex.fromPolar(Math.min(mag, 0.999), ang);
         desc = `Plotted Γ = ${mag.toFixed(3)}∠${ang.toFixed(1)}°`;
+        onPlotPoint(gamma, desc, state.Z0);
         break;
       }
       case "S11": {
@@ -78,6 +81,7 @@ export default function InputPanel({ state, onPlotPoint, onNavigate }: Props) {
         const mag = s11DbToLinear(db);
         gamma = Complex.fromPolar(Math.min(mag, 0.999), ang);
         desc = `Plotted S₁₁ = ${db} dB ∠${ang}° → |Γ| = ${mag.toFixed(3)}`;
+        onPlotPoint(gamma, desc, state.Z0);
         break;
       }
       case "Y": {
@@ -88,11 +92,10 @@ export default function InputPanel({ state, onPlotPoint, onNavigate }: Props) {
         const zn = zFromY(yn);
         gamma = gammaFromZ(zn);
         desc = `Plotted Y = ${yr} ${yi >= 0 ? "+" : "-"} j${Math.abs(yi)} S (Y₀ = ${Y0} S)`;
+        onPlotPoint(gamma, desc, Y0 !== 0 ? 1 / Y0 : state.Z0);
         break;
       }
     }
-
-    onPlotPoint(gamma!, desc!);
   };
 
   const handleMoveGen = () => {
@@ -100,7 +103,11 @@ export default function InputPanel({ state, onPlotPoint, onNavigate }: Props) {
     const d = parseFloat(moveDistance) || 0;
     const g = new Complex(activePoint.gamma.re, activePoint.gamma.im);
     const newGamma = rotateGamma(g, d);
-    onNavigate(newGamma, `Moved ${d.toFixed(3)}λ toward generator`);
+    onNavigate(
+      newGamma,
+      `Moved ${d.toFixed(3)}λ toward generator`,
+      activePoint.z0 || state.Z0,
+    );
   };
 
   const handleMoveLoad = () => {
@@ -108,7 +115,11 @@ export default function InputPanel({ state, onPlotPoint, onNavigate }: Props) {
     const d = parseFloat(moveDistance) || 0;
     const g = new Complex(activePoint.gamma.re, activePoint.gamma.im);
     const newGamma = rotateGamma(g, -d);
-    onNavigate(newGamma, `Moved ${d.toFixed(3)}λ toward load`);
+    onNavigate(
+      newGamma,
+      `Moved ${d.toFixed(3)}λ toward load`,
+      activePoint.z0 || state.Z0,
+    );
   };
 
   const radioClass = (active: boolean) =>

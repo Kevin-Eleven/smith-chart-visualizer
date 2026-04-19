@@ -31,6 +31,7 @@ export interface SmithPoint {
   id: string;
   label: string;
   gamma: Complex;
+  z0: number;
   color: string;
   highlightSettings: PointHighlightSettings;
 }
@@ -245,10 +246,12 @@ export function loadStateFromStorage(): SmithState | null {
     const defaults = createDefaultState();
     const display = { ...defaults.display, ...(parsed.display ?? {}) };
     const fallbackHighlightSettings = createPointHighlightSettings(display);
+    const fallbackZ0 = typeof parsed.Z0 === "number" ? parsed.Z0 : defaults.Z0;
 
     const points = Array.isArray(parsed.points)
       ? parsed.points
           .map((p) => {
+            const pointData = p as unknown as Record<string, unknown>;
             const gamma = p.gamma as { re: number; im: number } | undefined;
             if (
               !gamma ||
@@ -262,10 +265,10 @@ export function loadStateFromStorage(): SmithState | null {
               id: typeof p.id === "string" ? p.id : genId(),
               label: typeof p.label === "string" ? p.label : "P",
               gamma: reviveComplex(gamma),
+              z0: typeof pointData.z0 === "number" ? pointData.z0 : fallbackZ0,
               color: typeof p.color === "string" ? p.color : "#3b82f6",
               highlightSettings: normalizePointHighlightSettings(
-                (p as Record<string, unknown>).highlightSettings ??
-                  (p as Record<string, unknown>).circleTypes,
+                pointData.highlightSettings ?? pointData.circleTypes,
                 fallbackHighlightSettings,
               ),
             } as SmithPoint;
@@ -385,7 +388,7 @@ export class StateHistory {
       ...p,
       gamma: new Complex(p.gamma.re, p.gamma.im),
       highlightSettings: normalizePointHighlightSettings(
-        (p as Record<string, unknown>).highlightSettings,
+        p.highlightSettings,
         fallbackHighlightSettings,
       ),
     }));

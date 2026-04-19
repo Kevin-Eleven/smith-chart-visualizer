@@ -88,7 +88,7 @@ const Index = () => {
   }, []);
 
   const handlePlotPoint = useCallback(
-    (gamma: Complex, description: string) => {
+    (gamma: Complex, description: string, z0: number) => {
       const info = getPointInfo(gamma, state.Z0);
       const label = `P${state.points.length + 1}`;
       const color = nextPointColor();
@@ -96,6 +96,7 @@ const Index = () => {
         id: genId(),
         label,
         gamma,
+        z0,
         color,
         highlightSettings: createPointHighlightSettings(state.display),
       };
@@ -118,20 +119,21 @@ const Index = () => {
     (gamma: Complex) => {
       const info = getPointInfo(gamma, state.Z0);
       const desc = `Plotted point at Z = ${info.z.re.toFixed(1)} ${info.z.im >= 0 ? "+" : "-"} j${Math.abs(info.z.im).toFixed(1)} Ω`;
-      handlePlotPoint(gamma, desc);
+      handlePlotPoint(gamma, desc, state.Z0);
     },
     [state.Z0, handlePlotPoint],
   );
 
   const handleNavigate = useCallback(
-    (gamma: Complex, description: string) => {
-      const info = getPointInfo(gamma, state.Z0);
+    (gamma: Complex, description: string, z0: number) => {
+      const info = getPointInfo(gamma, z0);
       const label = `P${state.points.length + 1}`;
       const color = nextPointColor();
       const newPoint = {
         id: genId(),
         label,
         gamma,
+        z0,
         color,
         highlightSettings: createPointHighlightSettings(state.display),
       };
@@ -143,7 +145,7 @@ const Index = () => {
           new Set([...state.activePointIds, newPoint.id]),
         ),
       };
-      const fullDesc = `${description} → Z = ${info.zNorm.re.toFixed(3)} ${info.zNorm.im >= 0 ? "+" : "-"} j${Math.abs(info.zNorm.im).toFixed(3)} (norm)`;
+      const fullDesc = `${description} → Z = ${info.z.re.toFixed(3)} ${info.z.im >= 0 ? "+" : "-"} j${Math.abs(info.z.im).toFixed(3)} Ω`;
       newState = addLogEntry(newState, fullDesc);
       pushState(newState);
     },
@@ -307,6 +309,7 @@ const Index = () => {
         id: genId(),
         label,
         gamma: newGamma,
+        z0: activePoint.z0,
         color,
         highlightSettings: createPointHighlightSettings(state.display),
       };
@@ -330,9 +333,9 @@ const Index = () => {
         shunt_C: "Shunt Capacitor",
       };
 
-      const info = getPointInfo(newGamma, state.Z0);
+      const info = getPointInfo(newGamma, activePoint.z0);
       const deltaLabel = isSeries ? "ΔX" : "ΔB";
-      const desc = `${componentLabels[component]} (${deltaLabel} = ${signedValue >= 0 ? "+" : ""}${signedValue.toFixed(3)}) → Z = ${info.zNorm.toString(3)} (norm), VSWR = ${info.vswr.toFixed(2)}`;
+      const desc = `${componentLabels[component]} (${deltaLabel} = ${signedValue >= 0 ? "+" : ""}${signedValue.toFixed(3)}) → Z = ${info.z.toString(3)} Ω, VSWR = ${info.vswr.toFixed(2)}`;
 
       let newState: SmithState = {
         ...state,

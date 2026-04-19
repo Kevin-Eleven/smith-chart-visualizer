@@ -35,7 +35,7 @@ export default function PointsPanel({
         <thead>
           <tr className="border-b border-border text-muted-foreground">
             <th className="px-2 py-1.5 text-left font-medium">Label</th>
-            <th className="px-2 py-1.5 text-left font-medium">Z (norm)</th>
+            <th className="px-2 py-1.5 text-left font-medium">Z (Ω)</th>
             <th className="px-2 py-1.5 text-left font-medium">Γ</th>
             <th className="px-2 py-1.5 text-left font-medium">VSWR</th>
             <th className="px-2 py-1.5 text-right font-medium">Actions</th>
@@ -45,7 +45,7 @@ export default function PointsPanel({
         <tbody>
           {state.points.map((point) => {
             const gamma = new Complex(point.gamma.re, point.gamma.im);
-            const info = getPointInfo(gamma, state.Z0);
+            const info = getPointInfo(gamma, point.z0 || state.Z0);
             const isActive = point.id === state.activePointId;
             const isPinnedActive = state.activePointIds.includes(point.id);
 
@@ -67,9 +67,9 @@ export default function PointsPanel({
                   </div>
                 </td>
                 <td className="px-2 py-1.5 smith-mono">
-                  {info.zNorm.re.toFixed(2)}
-                  {info.zNorm.im >= 0 ? "+" : ""}
-                  {info.zNorm.im.toFixed(2)}j
+                  {info.z.re.toFixed(2)}
+                  {info.z.im >= 0 ? "+" : ""}
+                  {info.z.im.toFixed(2)}j
                 </td>
                 <td className="px-2 py-1.5 smith-mono">
                   {info.gammaMag.toFixed(3)}∠{info.gammaAngle.toFixed(1)}°
